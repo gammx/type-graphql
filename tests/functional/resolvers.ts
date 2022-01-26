@@ -1301,6 +1301,19 @@ describe("Resolvers", () => {
         nestedOptionalArrayField?: Array<SampleInput | undefined>;
       }
       classes.SampleNestedInput = SampleNestedInput;
+      
+      @InputType()
+      class GetMessageFilters {
+          @Field({ nullable: true })
+          _id?: number;
+
+          @Field({ nullable: true })
+          authorId?: number;
+
+          @Field({ nullable: true })
+          member?: number;
+      }
+      classes.GetMessageFilters = GetMessageFilters;
 
       @InputType()
       class SampleTripleNestedInput {
@@ -1424,6 +1437,12 @@ describe("Resolvers", () => {
         @DescriptorDecorator()
         queryWithCustomDescriptorDecorator(): boolean {
           return true;
+        }
+        
+        @Query(() => Message)
+        async queryWithNullableFields(@Arg('filters') filters: GetMessageFilters): number {
+            mutationInputValue = input;
+            return input.instanceField;
         }
 
         @Mutation()
@@ -1767,6 +1786,22 @@ describe("Resolvers", () => {
       expect(mutationInputValue.nestedField).toBeInstanceOf(classes.SampleInput);
       expect(mutationInputValue.nestedArrayField[0]).toBeInstanceOf(classes.SampleInput);
       expect(mutationInputValue).not.toHaveProperty("optionalNestedField");
+    });
+    
+    it("should create instances of nested input fields input objects without undefined", async () => {
+      const query = `query {
+        queryWithNullableFields(filters: {})
+      }`;
+
+      const queryResult = await graphql(schema, query);
+      const result = queryResult.data!.queryWithNullableFields;
+
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(1);
+      expect(mutationInputValue).toBeInstanceOf(classes.GetMessageFilters);
+      expect(mutationInputValue).not.toHaveProperty("_id");
+      expect(mutationInputValue).not.toHaveProperty("member");
+      expect(mutationInputValue).not.toHaveProperty("authorId");
     });
 
     it("shouldn't create instances of nested input fields nullable input objects when null provided", async () => {
